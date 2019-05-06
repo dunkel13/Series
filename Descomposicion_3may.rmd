@@ -1,0 +1,92 @@
+---
+title: "Descomposición - Clase 3 mayo"
+author: "Fernando Moreno; Viviana Arcila"
+date: "5 de mayo de 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Análisis de una serie de tiempo
+
+Vamos a hacer un análisis inicial a la serie de pasajeros, un análisis similar deberá hacerse para las series ISE y ACC de la base de datos $Base\_Accidentes.xlsx$
+
+* Base de Pasajeros
+```{r fig.height=3.5}
+data("AirPassengers")
+plot(AirPassengers)
+```
+
+## Transformación Box-Cox
+```{r warning=FALSE}
+library(FitAR) # install.packages("FitAR")
+# Fits AR and subset AR models and provides complete model building capabilities.
+library(forecast) # install.packages("forecast")
+#Forecasting Functions for Time Series and Linear Models
+```
+
++ If method=="guerrero", Guerrero's (1993) method is used, where lambda minimizes the coefficient of variation for subseries of x.
+```{r}
+forecast::BoxCox.lambda(AirPassengers, method = "guerrero", lower = 0, upper = 2)  
+#Automatic selection of Box Cox transformation parameter
+```
+
++ The function is implemented as a generic function with methods for classes "FitAR", "Arima", "ts" and "numeric".
+
+For \[ \lambda \neq 0 \] the Box-Cox transformation is of x is \[ (x^\lambda-1)/\lambda \] If the minimum data value is $\leq 0$, a small positive constant, equal to the negative of the minimum plus 0.25, is added to all the data values.
+```{r fig.height=3}
+#method="loglik"
+FitAR::BoxCox(AirPassengers)
+#Generic Box-Cox Analysis Function
+```
+
++ $order$: El vector indica el orden de los modelos: Un modelo AR(p) de orden p, diferenciaciòn $\nabla_d$ de orden d, MA(q) de orden q. 
+```{r fig.height=3}
+air.arima<-arima(AirPassengers, c(0,1,1), seasonal=list(order=c(0,1,1), period=12))
+#ARIMA Modelling of Time Series
+FitAR::BoxCox(air.arima)
+```
+
+```{r fig.height=4.5}
+lAirPass=log(AirPassengers)
+par(mfrow=c(2,1))
+plot(AirPassengers)
+plot(lAirPass)
+```
+
+## Descomposición usando promedios Móviles
+
+$decompose$: Decompose a time series into seasonal, trend and irregular components using moving averages. Deals with additive or multiplicative seasonal component.
+```{r fig.height=5}
+deslAirPass=decompose(lAirPass)
+plot(deslAirPass)
+head(deslAirPass$x)
+head(deslAirPass$seasonal)
+head(deslAirPass$trend)
+deslAirPass$random
+deslAirPass$figure
+deslAirPass$type
+```
+
+## Descompoisición usando suavizamiento exponencial
+
+$HoltWinters$ : Computes Holt-Winters Filtering of a given time series. Unknown parameters are determined by minimizing the squared prediction error.
+```{r fig.height=3.5}
+HWAP=HoltWinters(lAirPass,seasonal="additive")
+plot(HWAP)
+```
+
+```{r fig.height=5}
+ajustados=fitted(HWAP)
+head(ajustados)
+plot(ajustados)
+```
+
+## Diferenciación
+
+```{r}
+ldAirPass=diff(lAirPass,lag=1,differences = 1)
+#Differences indica número de diferencia
+```
