@@ -76,3 +76,43 @@
   plot(tMA1_Est)
   acf(tMA1_Est, type="correlation")
  }
+{
+  set.seed(118)
+  muestra=rnorm(200,0,1)
+  AR<-function(muestra, phi){
+    x=NULL
+    x[1]=0
+    for(i in 2:length(muestra)){ 
+      x[i]=phi*x[i-1]+muestra[i]
+    }
+    return(ts(x,frequency=6))
+  }
+  serie=AR(muestra, 0.5) 
+  plot(serie,main="Proceso AR(1)")
+  tAR1<-as.ts(as.vector(serie))
+  acf(tAR1, type="correlation")
+  ###
+  FitAR::BoxCox(tAR1) 
+  forecast::BoxCox.lambda(tAR1, method="guerrero", lower=0, upper=2)
+  # como lambda es muy cercano a uno, no se hace la transformación de los datos
+  ### Descomposición usando filtros de promedios móviles
+  tAR1<-ts(tAR1, frequency=9)
+  destAR1=decompose(tAR1)
+  plot(destAR1)
+  tsAR1<- as.ts(as.vector(destAR1$random))
+  acf(tsAR1, type="correlation", na.action = na.pass)
+  # como sabemos que la AR1 es estacionaria, en este ejercicio se visualiza que a pesar que no hay una componente estacional, se estima y por lo tanto se altera la componente estacionaria de la serie haciendo que se vaya a cero en un rezago superior a la serie AR1 original
+  ### Descomposición usando suavizamiento exponencial
+  HWtAR1=HoltWinters(tAR1,seasonal="additive")
+  plot(HWtAR1)
+  ajustadostAR1=fitted(HWtAR1)
+  head(ajustadostAR1)
+  Yt<-tAR1-ajustadostAR1[,2]-ajustadostAR1[,3]-ajustadostAR1[,4]
+  tAR1_Est<-as.ts(as.vector(Yt))
+  # la componente Yt es la componente "estacionaria" serie 
+  par(mfrow=c(1,1))
+  #plot(tAR1)
+  plot(tAR1_Est)
+  acf(tAR1_Est, type="correlation")
+  # como sabemos que la AR1 es estacionaria, en este ejercicio se visualiza que a pesar que no hay una componente estacional, se estima y por lo tanto se altera la componente estacionaria de la serie haciendo que se vaya a cero en un rezago superior a la serie AR1 original
+}
