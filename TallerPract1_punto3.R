@@ -75,4 +75,4 @@
   #plot(tMA1)
   plot(tMA1_Est)
   acf(tMA1_Est, type="correlation")
-  }
+ }
