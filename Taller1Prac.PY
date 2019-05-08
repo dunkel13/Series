@@ -72,7 +72,13 @@ pyplot.show()
 residuos=result.resid
 
 acf(residuos, nlags=30, unbiased=False, missing='drop')
+#######
+##
+#######
+##
+## 
 plot_acf(result.resid, nlags=10, unbiased=False)
+### no gráfica nada
 ####Holt-Winters
 from statsmodels.tsa.api import ExponentialSmoothing, SimpleExpSmoothing, Holt
 print(ts)
