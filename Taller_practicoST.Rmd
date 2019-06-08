@@ -1,0 +1,272 @@
+---
+title: "Taller práctico ST"
+author: "Fernando Moreno"
+date: "5 de mayo de 2019"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Punto 1
+
+```{r}
+data("AirPassengers")
+# cero cae en el IC para lambda, se usa logaritmo para transformar los datos
+lAirPass=log(AirPassengers)
+# Descomposición usando promedios móviles
+deslAirPass=decompose(lAirPass)
+```
+
+```{r fig.height=3.5}
+Pasajeros<-as.ts(as.vector(deslAirPass$random))
+plot(Pasajeros)
+acf(Pasajeros, type = "correlation", na.action = na.pass) 
+```
+
+Como se va rápidamente a cero, se concluye que la serie "Pasajeros" es estacionaria.
+
+```{r fig.height=3.5}
+# Descomposición usando suavizamiento exponencial
+HWAP=HoltWinters(lAirPass,seasonal="additive")
+ajustados=fitted(HWAP)
+Yt<-lAirPass-ajustados[,2]-ajustados[,3]-ajustados[,4]
+# la componente Yt es la componente "estacionaria" serie 
+acf(as.ts(as.vector(Yt)), type="correlation", main="Series Pasajeros HW")
+```
+
+Como se va rápidamente a cero, se concluye que la serie "Pasajeros" es estacionaria.
+
+
+## R punto 2
+
+```{r fig.height=3.5}
+library(readxl)
+BaseAcc <- read_excel("Base_Accidentes.xlsx")
+ISE<-ts(BaseAcc$ISE, frequency=12, start=c(2005,1))
+ACC<-ts(BaseAcc$ACC, frequency=12, start=c(2005,1))
+plot(ISE)
+plot(ACC)
+```
+
+* Transformación Box-Cox
+```{r warning=FALSE, message=FALSE}
+library(forecast)
+library(FitAR)
+forecast::BoxCox.lambda(ISE, method = "guerrero", lower = 0, upper = 2)
+FitAR::BoxCox(ISE)
+lambda=forecast::BoxCox.lambda(ACC, method = "guerrero", lower = 0, upper = 3); lambda
+#FitAR::BoxCox(ACC) 
+#Error in ARToPacf(phi) : transformation is not defined, partial correlation = 1
+```
+
+```{r}
+lISE=log(ISE) # lambda ->0
+UACC= ((ACC^lambda)-1)/lambda #lambda distinto de cero o de uno
+```
+
+* Descomposición usando promedios móviles
+```{r fig.height=4}
+deslISE=decompose(ts(lISE, frequency=10)) 
+#Error in decompose(lISE) : time series has no or less than 2 periods 
+#SOL: crear un objeto de ts usando "ts(...)" y no "as.ts(...)"
+plot(deslISE)
+tsISE<-as.ts(as.vector(deslISE$random))
+acf(tsISE, type="correlation", na.action = na.pass)
+# como se va a cero se concluye que es estacionario
+desUACC<-decompose(UACC)
+plot(desUACC)
+tsACC<-as.ts(as.vector(desUACC$random))
+acf(tsACC, type="correlation", na.action = na.pass)
+# como se va a cero se concluye que es estacionario
+```
+
+* Descomposición usando suavizamiento exponencial
+```{r fig.height=3.5}
+HWISE=HoltWinters(lISE,seasonal="additive")
+ajustadosISE=fitted(HWISE)
+Yt<-lISE-ajustadosISE[,2]-ajustadosISE[,3]-ajustadosISE[,4]
+ISE_Est<-as.ts(as.vector(Yt))
+# la componente Yt es la componente "estacionaria" serie 
+acf(as.ts(as.vector(Yt)), type="correlation", main="Series ISE HW")
+# como se va a cero se concluye que es estacionario
+HWACC=HoltWinters(UACC,seasonal="additive")
+ajustadosACC=fitted(HWACC)
+Yt<-UACC-ajustadosACC[,2]-ajustadosACC[,3]-ajustadosACC[,4]
+acf(as.ts(as.vector(Yt)), type="correlation", main="Series ACC HW")
+# como se va a cero se concluye que es estacionario
+```
+
+
+## R Punto 3
+
+```{r fig.height=3.5}
+#Simulación IID
+n=200 #Tamaño de la serie
+set.seed(114)
+serieIID=as.ts(rnorm(n,0,2))
+plot(serieIID,main='IID')
+acf(serieIID)
+FitAR::BoxCox(serieIID) 
+forecast::BoxCox.lambda(serieIID, method="guerrero", lower=0, upper=2)
+# como lambda es muy cercano a uno, no se hace la transformación de los datos
+tIID<-ts(serieIID, frequency=10)
+```
+* Descomposición usando filtros de promedios móviles
+```{r fig.height=4}
+desIID=decompose(tIID)
+plot(desIID)
+tsIID<- as.ts(as.vector(desIID$random))
+acf(tsIID, type="correlation", na.action = na.pass)
+```
+como sabemos que la serieIID es estacionaria, en este ejercicio se visualiza que a pesar que no hay una componente estacional, se estima y por lo tanto se altera la componente estacionaria de la serie.
+
+* Descomposición usando suavizamiento exponencial
+```{r fig.height=4}
+HWtIID=HoltWinters(tIID,seasonal="additive")
+ajustadostIID=fitted(HWtIID)
+Yt<-tIID-ajustadostIID[,2]-ajustadostIID[,3]-ajustadostIID[,4]
+tIID_Est<-as.ts(as.vector(Yt))
+# la componente Yt es la componente "estacionaria" serie 
+acf(tIID_Est, type="correlation")
+```
+
+```{r fig.height=4}
+#Simulación MA(1)
+l=50 #condiciones iniciales
+sigma=2
+theta=-0.5 
+set.seed(151)
+ruido=rnorm(n+l,0,sigma)
+MA1aux=rep(0,n+l)
+for(j in 2:(n+l)){
+    MA1aux[j]=theta*ruido[j-1]+ruido[j]
+  }
+MA1=as.ts(MA1aux[l+1:n])
+plot(MA1)
+acf(MA1)
+FitAR::BoxCox(MA1) 
+forecast::BoxCox.lambda(MA1, method="guerrero", lower=0, upper=2)
+# como lambda es muy cercano a uno, no se hace la transformación de los datos
+```
+
+* Descomposición usando filtros de promedios móviles
+```{r fig.height=4}
+tMA1<-ts(MA1, frequency=9)
+desMA1=decompose(tMA1)
+plot(desMA1)
+tsMA1<- as.ts(as.vector(desMA1$random))
+acf(tsMA1, type="correlation", na.action = na.pass)
+```
+como sabemos que la MA(1) es estacionaria, en este ejercicio se visualiza que a pesar que no hay una componente estacional, se estima y por lo tanto se altera la componente estacionaria de la serie haciendo que se vaya a cero en un rezago superior a la serie MA(1) original.
+
+* Descomposición usando suavizamiento exponencial
+```{r fig.height=4}
+HWtMA1=HoltWinters(tMA1,seasonal="additive")
+ajustadostMA1=fitted(HWtMA1)
+Yt<-tMA1-ajustadostMA1[,2]-ajustadostMA1[,3]-ajustadostMA1[,4]
+tMA1_Est<-as.ts(as.vector(Yt))
+# la componente Yt es la componente "estacionaria" serie 
+acf(as.ts(as.vector(Yt)), type="correlation", main="Series MA(1) HW")
+```
+
+```{r fig.height=4}
+#Simulación AR(1)
+set.seed(118)
+muestra=rnorm(200,0,1)
+AR<-function(muestra, phi){
+  x=NULL
+  x[1]=0
+  for(i in 2:length(muestra)){ 
+    x[i]=phi*x[i-1]+muestra[i]
+  }
+  return(ts(x,frequency=6))
+}
+serie=AR(muestra, 0.5) 
+plot(serie,main="Proceso AR(1)")
+tAR1<-as.ts(as.vector(serie))
+acf(tAR1, type="correlation")
+FitAR::BoxCox(tAR1) 
+forecast::BoxCox.lambda(tAR1, method="guerrero", lower=0, upper=2)
+# como lambda es muy cercano a uno, no se hace la transformación de los datos
+```
+
+* Descomposición usando filtros de promedios móviles
+```{r fig.height=4}
+tAR1<-ts(tAR1, frequency=9)
+destAR1=decompose(tAR1)
+plot(destAR1)
+tsAR1<- as.ts(as.vector(destAR1$random))
+acf(tsAR1, type="correlation", na.action = na.pass)
+```
+como sabemos que la AR(1) es estacionaria, en este ejercicio se visualiza que a pesar que no hay una componente estacional, se estima y por lo tanto se altera la componente estacionaria de la serie haciendo que se vaya a cero en un rezago superior a la serie AR(1) original.
+
+* Descomposición usando suavizamiento exponencial
+```{r fig.height=4}
+HWtAR1=HoltWinters(tAR1,seasonal="additive")
+ajustadostAR1=fitted(HWtAR1)
+Yt<-tAR1-ajustadostAR1[,2]-ajustadostAR1[,3]-ajustadostAR1[,4]
+# la componente Yt es la componente "estacionaria" serie 
+acf(as.ts(as.vector(Yt)), type="correlation", main="Series AR(1) HW")
+```
+
+## R punto 4
+
+```{r fig.height=4}
+serie=AR(muestra, 0.5) 
+#plot(serie,main="Proceso AR(1)")
+Yt<-as.ts(as.vector(serie)) #componente estacionaria
+t<-1:200
+St<-sin((pi/6)*t) # componente estacional
+b=0.2; a=2
+mt=a+b*t # componente de tendencia
+Xt=ts(mt+St+Yt, frequency=12)
+plot(Xt, main="Serie simulada")
+# Estabilización de la varianza
+FitAR::BoxCox(Xt) 
+forecast::BoxCox.lambda(Xt, method="guerrero", lower=0, upper=2)
+# como lambda es muy cercano a uno, no se hace la transformación de los datos
+
+# Descomposición usando filtro de promedios móviles
+desX<-decompose(Xt)
+plot(desX)
+#tsXt<-as.ts(as.vector(desX$random))
+#acf(tsXt, type="correlation", na.action = na.pass)
+```
+
+\clearpage
+```{r fig.height=8}
+par(mfrow=c(2,1))
+# componente estacional
+plot(as.ts(St))
+plot(as.ts(as.vector(desX$seasonal)), ylab="estacional")
+# componente de tendencia
+plot(as.ts(mt))
+plot(as.ts(as.vector(desX$trend)), ylab="tendencia")
+# componente estacionaria
+plot(as.ts(Yt))
+plot(as.ts(as.vector(desX$random)), ylab="tendencia")
+```
+
+\clearpage
+
+```{r fig.height=6.5}
+#Descomposición usando suavizamiento exponencial
+HWXt<-HoltWinters(Xt, seasonal="additive")
+ajustadosXt<-fitted(HWXt)
+HWSt<-ajustadosXt[,4]
+HWmt<-ajustadosXt[,2]-ajustadosXt[,3]
+HWYt<-Xt-ajustadosXt[,2]-ajustadosXt[,3]-ajustadosXt[,4]
+par(mfrow=c(2,1))
+# componente estacional
+plot(as.ts(St))
+plot(HWSt, ylab="estacional")
+# componente de tendencia
+plot(as.ts(mt))
+plot(HWmt, ylab="tendencia")
+# componente estacionaria
+plot(as.ts(Yt))
+plot(HWYt, ylab="tendencia")
+```
+
