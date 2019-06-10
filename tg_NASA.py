@@ -26,6 +26,27 @@ tg_NASA.tail(10)
 
 ind = pd.date_range(start='1880', end='2019', freq='Y')
 print(ind)
+###########################
+### TRANSFORMACIÓN BOX COX
+###########################
+tg_NASA.min()
+bc_tg_NASA = pd.DataFrame(tg_NASA['No_Smoothing'] + 0.73) 
+# MIN (No_Smoothing) = -0.48, EN [R]: minimum data value <= 0 so -min+0.25 added to all values, LUEGO -(-0.48)+0.25=0.73
+print(bc_tg_NASA)
+bc_tg_NASA = bc_tg_NASA.set_index(ind)
+bc_ts_tgN = pd.Series(bc_tg_NASA['No_Smoothing'],index=ind)
+print(bc_ts_tgN) 
+plt.plot(bc_ts_tgN)
+plt.show()
+import scipy as sp
+import scipy.stats ####En ocasiones puede funcionar la línea 46 sin ésta línea.
+sp.stats.boxcox(bc_tg_NASA['No_Smoothing'],alpha=0.05) 
+print(sp.stats.boxcox(bc_tg_NASA['No_Smoothing'],alpha=0.05))
+
+###
+
+
+
 tg_NASA = tg_NASA.set_index(ind)
 ts_tgN = pd.Series(tg_NASA['No_Smoothing'],index=ind)
 print(ts_tgN) 
